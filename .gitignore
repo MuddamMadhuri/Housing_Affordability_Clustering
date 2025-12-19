@@ -1,0 +1,56 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Virtual Environments ---
+venv/
+env/
+.env/
+.venv/
+
+# --- IDEs ---
+.vscode/
+.idea/
+*.swp
+
+# --- Project Specific Large Files (>50MB) ---
+# Data files
+cleaned_data.csv
+cleaned_full_affordability.csv
+refined_metadata.csv
+refined_features.csv
+clustering_features.csv
+
+# Models (if you want to exclude them, though .pkl is usually okay if small)
+# kmeans_model.pkl is ~500KB, so it's safe to keep.
+# *.pkl
+# *.h5
+# *.pt
+# *.pth
+
+# Logs
+test_results.txt
+*.log
+
+# Temp
+reproduce_issue.py
+fix_report*.md

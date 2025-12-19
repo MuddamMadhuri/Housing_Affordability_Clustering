@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart City Housing Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="map-bg"></div>
+    <div class="container">
+        <header>
+            <h1>Housing Affordability Intelligence</h1>
+            <p>Smart City Policy Formulation Dashboard</p>
+        </header>
+
+        <main>
+            <!-- Tab Navigation -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="openTab('dashboard')">Analytics Dashboard</button>
+                <button class="tab-btn" onclick="openTab('recommender')">Policy Recommender</button>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="metrics-row">
+                    <div class="card metric">
+                        <h3>Total Households</h3>
+                        <p id="total-count">Loading...</p>
+                    </div>
+                    <div class="card metric">
+                        <h3>Avg Cost Burden</h3>
+                        <p id="avg-burden">Loading...</p>
+                    </div>
+                    <div class="card metric">
+                        <h3>Vulnerable Population</h3>
+                        <p id="vulnerable-pct">Loading...</p>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="card chart-card">
+                        <h3>Affordability Landscape (PCA)</h3>
+                        <div id="scatter-plot"></div>
+                    </div>
+                    <div class="card chart-card">
+                        <h3>Cluster Profiles</h3>
+                        <div id="bar-plot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommender Tab -->
+            <div id="recommender" class="tab-content">
+                <div class="recommender-grid">
+                    <div class="card form-card">
+                        <h3>Household Simulator</h3>
+                        <form id="predict-form">
+                            <div class="form-group">
+                                <label>Annual Income ($)</label>
+                                <input type="number" id="income" placeholder="e.g. 45000">
+                            </div>
+                            <div class="form-group">
+                                <label>Monthly Housing Cost ($)</label>
+                                <input type="number" id="cost" placeholder="e.g. 1200">
+                            </div>
+                            <div class="form-group">
+                                <label>Age of Householder</label>
+                                <input type="number" id="age" placeholder="e.g. 35">
+                            </div>
+                            <div class="form-group">
+                                <label>Bedrooms</label>
+                                <input type="number" id="bedrooms" placeholder="e.g. 3">
+                            </div>
+                            <button type="submit" class="btn-primary">Analyze Affordability</button>
+                        </form>
+                    </div>
+
+                    <div id="result-card" class="card result-card" style="display: none;">
+                        <h3>Prediction Result</h3>
+                        <div id="anomaly-banner" class="banner error"></div>
+
+                        <div class="result-item">
+                            <span class="label">Predicted Cluster:</span>
+                            <span id="pred-cluster" class="value">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="label">Cost Burden:</span>
+                            <span id="pred-burden" class="value">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="label">Policy Recommendation:</span>
+                            <p id="pred-rec" class="recommendation-text">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+
+</html>
