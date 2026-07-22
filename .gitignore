@@ -54,3 +54,6 @@ test_results.txt
 # Temp
 reproduce_issue.py
 fix_report*.md
+
+# Auth user store (contains hashed passwords — do NOT commit)
+users.json

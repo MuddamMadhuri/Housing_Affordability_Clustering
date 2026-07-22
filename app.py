@@ -1,10 +1,75 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, flash
 import pandas as pd
 import numpy as np
 import joblib
 import os
+import json
+import hashlib
+import secrets
+from functools import wraps
+from datetime import timedelta
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+app.permanent_session_lifetime = timedelta(days=7)
+
+# ---- User Store (JSON file, no DB needed) ----
+USERS_FILE = os.path.join(os.path.dirname(__file__), 'users.json')
+
+def _load_users():
+    if not os.path.exists(USERS_FILE):
+        # Seed a default admin account
+        default = {
+            "admin": {
+                "full_name": "Admin User",
+                "email": "admin@housing.ai",
+                "password_hash": _hash_pw("housing123")
+            }
+        }
+        _save_users(default)
+        return default
+    with open(USERS_FILE, 'r') as f:
+        return json.load(f)
+
+def _save_users(users):
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users, f, indent=2)
+
+def _hash_pw(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# ---- Auth Decorator ----
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'username' not in session:
+            return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return decorated
+
+def api_login_required(f):
+    """For API routes: return JSON 401 instead of HTML redirect."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'username' not in session:
+            return jsonify({'error': 'Authentication required', 'redirect': '/login'}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+def _to_python(obj):
+    """Recursively convert numpy types to plain Python for JSON serialization."""
+    import numpy as np
+    if isinstance(obj, dict):
+        return {_to_python(k): _to_python(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_python(i) for i in obj]
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    return obj
 
 # Load Data and Models
 DATA_PATH = "refined_metadata.csv"
@@ -40,7 +105,8 @@ def load_resources():
             stats = df.groupby('Cluster_Label')[available_cols].mean()
             counts = df['Cluster_Label'].value_counts()
             stats['Count'] = counts
-            cluster_stats = stats.to_dict(orient='index')
+            # Convert to plain Python types (avoid numpy int64/float64 JSON errors)
+            cluster_stats = _to_python(stats.to_dict(orient='index'))
             
     if os.path.exists(MODEL_PATH):
         model = joblib.load(MODEL_PATH)
@@ -52,8 +118,120 @@ def load_resources():
 load_resources()
 
 @app.route('/')
+@login_required
 def index():
-    return render_template('index.html')
+    return render_template('index.html', username=session.get('username'), full_name=session.get('full_name', session.get('username')))
+
+# ---- Auth Routes ----
+
+@app.route('/login', methods=['GET'])
+def login_page():
+    if 'username' in session:
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+@app.route('/login', methods=['POST'])
+def login_post():
+    # Support both JSON (AJAX) and form POST
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form
+
+    username = (data.get('username') or '').strip()
+    password = data.get('password') or ''
+    remember = bool(data.get('remember', False))
+
+    if not username or not password:
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'Username and password are required.'}), 400
+        flash('Username and password are required.', 'error')
+        return redirect(url_for('login_page'))
+
+    users = _load_users()
+    user  = users.get(username)
+
+    if not user or user['password_hash'] != _hash_pw(password):
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'Invalid username or password.'}), 401
+        flash('Invalid username or password.', 'error')
+        return redirect(url_for('login_page'))
+
+    # Set session
+    if remember:
+        session.permanent = True
+    session['username']  = username
+    session['full_name'] = user.get('full_name', username)
+
+    if request.is_json:
+        return jsonify({'success': True, 'redirect': url_for('index')})
+    return redirect(url_for('index'))
+
+@app.route('/register', methods=['GET'])
+def register_page():
+    if 'username' in session:
+        return redirect(url_for('index'))
+    return render_template('register.html')
+
+@app.route('/register', methods=['POST'])
+def register_post():
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form
+
+    full_name        = (data.get('full_name') or '').strip()
+    username         = (data.get('username') or '').strip()
+    email            = (data.get('email') or '').strip()
+    password         = data.get('password') or ''
+    confirm_password = data.get('confirm_password') or ''
+
+    # Validation
+    import re
+    if not full_name or not username or not password or not confirm_password:
+        err = 'All fields are required.'
+        if request.is_json: return jsonify({'success': False, 'error': err}), 400
+        flash(err, 'error'); return redirect(url_for('register_page'))
+
+    if not re.match(r'^[a-zA-Z0-9_]{3,20}$', username):
+        err = 'Username must be 3–20 characters: letters, numbers, underscores.'
+        if request.is_json: return jsonify({'success': False, 'error': err}), 400
+        flash(err, 'error'); return redirect(url_for('register_page'))
+
+    if len(password) < 6:
+        err = 'Password must be at least 6 characters.'
+        if request.is_json: return jsonify({'success': False, 'error': err}), 400
+        flash(err, 'error'); return redirect(url_for('register_page'))
+
+    if password != confirm_password:
+        err = 'Passwords do not match.'
+        if request.is_json: return jsonify({'success': False, 'error': err}), 400
+        flash(err, 'error'); return redirect(url_for('register_page'))
+
+    users = _load_users()
+    if username in users:
+        err = f'Username "{username}" is already taken.'
+        if request.is_json: return jsonify({'success': False, 'error': err}), 409
+        flash(err, 'error'); return redirect(url_for('register_page'))
+
+    # Save new user
+    users[username] = {
+        'full_name':     full_name,
+        'email':         email,
+        'password_hash': _hash_pw(password)
+    }
+    _save_users(users)
+
+    if request.is_json:
+        return jsonify({'success': True, 'message': 'Account created! Redirecting to login…', 'redirect': url_for('login_page')})
+    flash('Account created successfully! Please sign in.', 'success')
+    return redirect(url_for('login_page'))
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You have been signed out.', 'success')
+    return redirect(url_for('login_page'))
 
 @app.route('/health')
 def health():
@@ -61,24 +239,28 @@ def health():
     return jsonify({"status": status, "rows": len(df) if df is not None else 0})
 
 @app.route('/api/data')
+@api_login_required
 def get_data():
     try:
-        # Return a sample of data for the scatter plot to keep it light
         if df is None:
             return jsonify({"error": "Data not loaded"}), 503
-            
+
         sample = df.sample(n=min(2000, len(df)), random_state=42).fillna(0)
-        
-        # Prepare JSON structure
+
+        # Convert scatter records to plain Python types
+        scatter_raw = sample[['ZINC2', 'cost_burden_ratio', 'Cluster_Label', 'COSTMED']].to_dict(orient='records')
+        scatter = _to_python(scatter_raw)
+
         data = {
-            "scatter": sample[['ZINC2', 'cost_burden_ratio', 'Cluster_Label', 'COSTMED']].to_dict(orient='records'),
-            "stats": cluster_stats
+            "scatter": scatter,
+            "stats": cluster_stats   # already converted in load_resources()
         }
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/predict', methods=['POST'])
+@api_login_required
 def predict():
     if model is None or scaler is None:
         return jsonify({"error": "Model not loaded"}), 500
@@ -94,7 +276,7 @@ def predict():
         raw_age = data.get('age')
         
         # STRICT AGE HANDLING (Rule 3)
-        AGE_MEDIAN = 35.0
+        AGE_MEDIAN = 44.0
         final_age = AGE_MEDIAN
         age_anomaly = False # For age < 18 or > 110
         
@@ -229,11 +411,52 @@ def predict():
 
         anomaly_flag = len(anomalies) > 0
         
-        # --- 6. Flat Response ---
-        # Matches main.js expectations
+        # --- 6. Nested Response (matches test_fix.py expectations) ---
         label = "High" if primary_vec[4] > 0.3 else "Affordable"
 
+        # Build alternative interpretation if monthly income was detected
+        alternative = None
+        if possible_monthly:
+            alt_income = safe_income * 12
+            alt_vec, alt_burden = build_features(alt_income, safe_cost, safe_age, safe_beds)
+            alt_scaled = scaler.transform([alt_vec])
+            alt_cluster = int(model.predict(alt_scaled)[0])
+            alt_mapping = cluster_policy_map.get(alt_cluster, {"label": "Unknown", "policy": ""})
+            alternative = {
+                "adjusted_annual_income": alt_income,
+                "predicted_cluster": {
+                    "id": alt_cluster,
+                    "label": alt_mapping["label"]
+                },
+                "cost_burden_ratio": alt_burden,
+                "recommendation": f"{alt_mapping['label']}: {alt_mapping['policy']}"
+            }
+
+        # Build primary result notes
+        notes = []
+        if raw_age is None or raw_age == "":
+            notes.append("age_defaulted_median")
+        elif age_anomaly:
+            notes.append(f"age_out_of_valid_range: {float(raw_age)}")
+
         return jsonify({
+            "primary_result": {
+                "predicted_cluster": {
+                    "id": primary_cluster,
+                    "label": mapping["label"]
+                },
+                "cost_burden_ratio": primary_burden,
+                "cost_burden_label": label,
+                "recommendation": recommendation,
+                "age_used": safe_age,
+                "notes": notes
+            },
+            "warning": {
+                "anomaly_flag": anomaly_flag,
+                "messages": anomalies
+            },
+            "alternative_interpretation": alternative,
+            # Flat fields kept for main.js compatibility
             "cluster": primary_cluster,
             "cost_burden_ratio": primary_burden,
             "cost_burden_label": label,
@@ -245,8 +468,43 @@ def predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+
+@app.route('/api/clusters')
+@api_login_required
+def get_clusters():
+    """Return the canonical cluster definitions for the frontend legend."""
+    definitions = [
+        {
+            "id": 0,
+            "label": "Middle-Income Stable",
+            "color": "#38bdf8",
+            "icon": "🏠",
+            "policy": "Workforce housing support, rent stabilization, first-time homebuyer assistance."
+        },
+        {
+            "id": 1,
+            "label": "Low-Income Severely Burdened",
+            "color": "#ef4444",
+            "icon": "⚠️",
+            "policy": "Immediate rent subsidies, eviction prevention, emergency housing assistance."
+        },
+        {
+            "id": 2,
+            "label": "High-Income Secure",
+            "color": "#22c55e",
+            "icon": "✅",
+            "policy": "Market-rate housing development, inclusionary zoning, cross-subsidy for affordable housing."
+        },
+        {
+            "id": 3,
+            "label": "Extremely Low-Income / No Income",
+            "color": "#f59e0b",
+            "icon": "🆘",
+            "policy": "Emergency shelter, supportive housing, income verification and benefits enrollment."
+        }
+    ]
+    return jsonify(definitions)
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

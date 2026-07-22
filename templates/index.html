@@ -4,102 +4,220 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart City Housing Dashboard</title>
+    <title>Housing Affordability Intelligence | Smart City Policy Dashboard</title>
+    <meta name="description" content="AI-powered housing affordability clustering and policy recommendation dashboard for smart city planners.">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <div class="map-bg"></div>
+
+    <!-- Animated grid overlay -->
+    <div class="grid-overlay"></div>
+
     <div class="container">
+        <!-- User Info Bar -->
+        <div class="user-info-bar">
+            <span class="user-chip">👤 {{ full_name }}</span>
+            <a href="/logout" class="logout-btn">🚪 Sign Out</a>
+        </div>
+
+        <!-- Header -->
         <header>
+            <div class="header-badge">🏙️ Smart City Analytics</div>
             <h1>Housing Affordability Intelligence</h1>
-            <p>Smart City Policy Formulation Dashboard</p>
+            <p>AI-Powered Policy Formulation Dashboard &mdash; K-Means Clustering on U.S. Housing Survey Data</p>
         </header>
 
         <main>
             <!-- Tab Navigation -->
             <div class="tabs">
-                <button class="tab-btn active" onclick="openTab('dashboard')">Analytics Dashboard</button>
-                <button class="tab-btn" onclick="openTab('recommender')">Policy Recommender</button>
+                <button id="tab-btn-dashboard" class="tab-btn active" onclick="openTab('dashboard', this)">
+                    <span class="tab-icon">📊</span> Analytics Dashboard
+                </button>
+                <button id="tab-btn-recommender" class="tab-btn" onclick="openTab('recommender', this)">
+                    <span class="tab-icon">🔮</span> Policy Recommender
+                </button>
+                <button id="tab-btn-clusters" class="tab-btn" onclick="openTab('clusters', this)">
+                    <span class="tab-icon">🗂️</span> Cluster Guide
+                </button>
             </div>
 
-            <!-- Dashboard Tab -->
+            <!-- ===== DASHBOARD TAB ===== -->
             <div id="dashboard" class="tab-content active">
+
+                <!-- Metrics Row -->
                 <div class="metrics-row">
-                    <div class="card metric">
-                        <h3>Total Households</h3>
-                        <p id="total-count">Loading...</p>
+                    <div class="card metric" id="metric-total">
+                        <div class="metric-icon">👨‍👩‍👧‍👦</div>
+                        <div class="metric-body">
+                            <h3>Total Households</h3>
+                            <p id="total-count"><span class="spinner">↻</span></p>
+                        </div>
                     </div>
-                    <div class="card metric">
-                        <h3>Avg Cost Burden</h3>
-                        <p id="avg-burden">Loading...</p>
+                    <div class="card metric" id="metric-burden">
+                        <div class="metric-icon">📉</div>
+                        <div class="metric-body">
+                            <h3>Avg Cost Burden</h3>
+                            <p id="avg-burden"><span class="spinner">↻</span></p>
+                        </div>
                     </div>
-                    <div class="card metric">
-                        <h3>Vulnerable Population</h3>
-                        <p id="vulnerable-pct">Loading...</p>
+                    <div class="card metric" id="metric-vuln">
+                        <div class="metric-icon">🚨</div>
+                        <div class="metric-body">
+                            <h3>Burdened Households</h3>
+                            <p id="vulnerable-pct"><span class="spinner">↻</span></p>
+                        </div>
+                    </div>
+                    <div class="card metric" id="metric-clusters">
+                        <div class="metric-icon">🔵</div>
+                        <div class="metric-body">
+                            <h3>Policy Segments</h3>
+                            <p id="cluster-count"><span class="spinner">↻</span></p>
+                        </div>
                     </div>
                 </div>
 
+                <!-- Charts Grid -->
                 <div class="charts-grid">
                     <div class="card chart-card">
-                        <h3>Affordability Landscape (PCA)</h3>
+                        <h3>Affordability Landscape &mdash; Income vs. Burden</h3>
                         <div id="scatter-plot"></div>
                     </div>
                     <div class="card chart-card">
-                        <h3>Cluster Profiles</h3>
+                        <h3>Cluster Income &amp; Burden Profiles</h3>
                         <div id="bar-plot"></div>
                     </div>
                 </div>
+
+                <!-- Cluster Distribution Bar -->
+                <div class="card" style="margin-top: 1.5rem;">
+                    <h3>Population Distribution Across Clusters</h3>
+                    <div id="distribution-plot"></div>
+                </div>
             </div>
 
-            <!-- Recommender Tab -->
+            <!-- ===== RECOMMENDER TAB ===== -->
             <div id="recommender" class="tab-content">
                 <div class="recommender-grid">
                     <div class="card form-card">
-                        <h3>Household Simulator</h3>
+                        <h3>🏡 Household Simulator</h3>
+                        <p class="form-desc">Enter household details to predict the affordability cluster and receive a tailored policy recommendation.</p>
                         <form id="predict-form">
                             <div class="form-group">
-                                <label>Annual Income ($)</label>
-                                <input type="number" id="income" placeholder="e.g. 45000">
+                                <label for="income">Annual Income ($)</label>
+                                <input type="number" id="income" name="income" placeholder="e.g. 45000" min="0">
                             </div>
                             <div class="form-group">
-                                <label>Monthly Housing Cost ($)</label>
-                                <input type="number" id="cost" placeholder="e.g. 1200">
+                                <label for="cost">Monthly Housing Cost ($)</label>
+                                <input type="number" id="cost" name="cost" placeholder="e.g. 1200" min="0">
                             </div>
                             <div class="form-group">
-                                <label>Age of Householder</label>
-                                <input type="number" id="age" placeholder="e.g. 35">
+                                <label for="age">Age of Householder</label>
+                                <input type="number" id="age" name="age" placeholder="e.g. 35" min="18" max="110">
                             </div>
                             <div class="form-group">
-                                <label>Bedrooms</label>
-                                <input type="number" id="bedrooms" placeholder="e.g. 3">
+                                <label for="bedrooms">Number of Bedrooms</label>
+                                <input type="number" id="bedrooms" name="bedrooms" placeholder="e.g. 3" min="1" max="10">
                             </div>
-                            <button type="submit" class="btn-primary">Analyze Affordability</button>
+                            <button type="submit" id="analyze-btn" class="btn-primary">
+                                <span id="btn-text">⚡ Analyze Affordability</span>
+                                <span id="btn-loader" class="btn-loader" style="display:none;">Analyzing…</span>
+                            </button>
                         </form>
                     </div>
 
+                    <!-- Result Panel -->
                     <div id="result-card" class="card result-card" style="display: none;">
-                        <h3>Prediction Result</h3>
-                        <div id="anomaly-banner" class="banner error"></div>
+                        <h3>📋 Prediction Result</h3>
 
-                        <div class="result-item">
-                            <span class="label">Predicted Cluster:</span>
-                            <span id="pred-cluster" class="value">-</span>
+                        <div id="anomaly-banner" class="banner error" style="display:none;"></div>
+
+                        <div id="cluster-badge-wrap" class="cluster-badge-wrap"></div>
+
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <span class="label">Predicted Cluster</span>
+                                <span id="pred-cluster" class="value highlight">—</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="label">Cost Burden Ratio</span>
+                                <span id="pred-burden" class="value">—</span>
+                            </div>
                         </div>
-                        <div class="result-item">
-                            <span class="label">Cost Burden:</span>
-                            <span id="pred-burden" class="value">-</span>
+
+                        <div class="rec-section">
+                            <div class="rec-label">📌 Policy Recommendation</div>
+                            <p id="pred-rec" class="recommendation-text">—</p>
                         </div>
-                        <div class="result-item">
-                            <span class="label">Policy Recommendation:</span>
-                            <p id="pred-rec" class="recommendation-text">-</p>
+
+                        <!-- Burden Meter -->
+                        <div class="burden-meter-wrap">
+                            <div class="burden-meter-label">Burden Level</div>
+                            <div class="burden-meter-track">
+                                <div id="burden-meter-fill" class="burden-meter-fill"></div>
+                            </div>
+                            <div class="burden-meter-ticks">
+                                <span>0%</span><span>30%</span><span>50%</span><span>100%+</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- ===== CLUSTER GUIDE TAB ===== -->
+            <div id="clusters" class="tab-content">
+                <div class="cluster-guide-header">
+                    <h2>Policy Cluster Reference Guide</h2>
+                    <p>The K-Means model groups households into 4 segments based on income, cost burden, age, and housing type. Each cluster maps to a targeted policy intervention.</p>
+                </div>
+                <div id="cluster-cards-grid" class="cluster-cards-grid">
+                    <!-- Populated dynamically by JS -->
+                    <div class="cluster-card-skeleton"></div>
+                    <div class="cluster-card-skeleton"></div>
+                    <div class="cluster-card-skeleton"></div>
+                    <div class="cluster-card-skeleton"></div>
+                </div>
+
+                <!-- Model Info -->
+                <div class="card model-info-card" style="margin-top: 2rem;">
+                    <h3>⚙️ Model Details</h3>
+                    <div class="model-info-grid">
+                        <div class="model-info-item">
+                            <span class="mi-label">Algorithm</span>
+                            <span class="mi-value">K-Means (k=4)</span>
+                        </div>
+                        <div class="model-info-item">
+                            <span class="mi-label">Data Source</span>
+                            <span class="mi-value">U.S. American Housing Survey (AHS)</span>
+                        </div>
+                        <div class="model-info-item">
+                            <span class="mi-label">Features</span>
+                            <span class="mi-value">15 (income, burden, age, bedrooms, region, AMI…)</span>
+                        </div>
+                        <div class="model-info-item">
+                            <span class="mi-label">Scaling</span>
+                            <span class="mi-value">MinMax Normalization</span>
+                        </div>
+                        <div class="model-info-item">
+                            <span class="mi-label">Cluster Selection</span>
+                            <span class="mi-value">Elbow Method + Silhouette Score</span>
+                        </div>
+                        <div class="model-info-item">
+                            <span class="mi-label">Burden Threshold</span>
+                            <span class="mi-value">&gt;30% = Burdened, &gt;50% = Severely Burdened</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
+
+        <footer>
+            <p>Housing Affordability Intelligence &copy; 2025 &mdash; Built with Flask, scikit-learn &amp; Plotly</p>
+        </footer>
     </div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

@@ -1,0 +1,4 @@
+Cluster 0: Middle Income. Affordable. POLICY: Market monitoring, maintain stability.
+Cluster 1: Low Income. Severely Burdened. POLICY: Rent subsidies, emergency assistance.
+Cluster 2: High Income. Affordable. POLICY: Market monitoring, maintain stability.
+Cluster 3: Low Income. Severely Burdened. POLICY: Rent subsidies, emergency assistance.

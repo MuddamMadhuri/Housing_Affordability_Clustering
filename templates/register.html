@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account | Housing Affordability Intelligence</title>
+    <meta name="description" content="Register a new account to access the Housing Affordability Intelligence dashboard.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="auth-body">
+    <div class="map-bg"></div>
+    <div class="grid-overlay"></div>
+
+    <!-- Floating orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="auth-wrapper">
+        <!-- Brand Panel -->
+        <div class="auth-brand">
+            <div class="brand-logo">🏙️</div>
+            <h1 class="brand-title">Join the <span>Intelligence</span> Network</h1>
+            <p class="brand-sub">Get instant access to AI-powered housing policy insights and affordability analytics.</p>
+
+            <div class="feature-list">
+                <div class="feature-item">
+                    <span class="feature-icon">📊</span>
+                    <div>
+                        <strong>Interactive Dashboard</strong>
+                        <p>Visualize income, cost burden, and cluster distributions across 2M+ households.</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🔮</span>
+                    <div>
+                        <strong>Policy Recommender</strong>
+                        <p>Enter household data and get real-time tailored policy recommendations.</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🔬</span>
+                    <div>
+                        <strong>Anomaly Detection</strong>
+                        <p>Intelligent detection of income entry errors and edge cases.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auth Form Panel -->
+        <div class="auth-panel">
+            <div class="auth-card">
+                <div class="auth-card-header">
+                    <div class="auth-icon">✨</div>
+                    <h2>Create Account</h2>
+                    <p>Start exploring housing affordability data</p>
+                </div>
+
+                <div id="auth-error" class="auth-alert auth-alert-error" style="display:none;">
+                    <span class="alert-icon">⚠️</span>
+                    <span id="auth-error-text"></span>
+                </div>
+                <div id="auth-success" class="auth-alert auth-alert-success" style="display:none;">
+                    <span class="alert-icon">✅</span>
+                    <span id="auth-success-text"></span>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="auth-alert auth-alert-{{ category }}">
+                            <span class="alert-icon">{{ '✅' if category == 'success' else '⚠️' }}</span>
+                            {{ message }}
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form id="register-form" method="POST" action="/register" novalidate>
+                    <div class="form-group">
+                        <label for="full_name">Full Name</label>
+                        <div class="input-wrap">
+                            <span class="input-icon">🙍</span>
+                            <input type="text" id="full_name" name="full_name"
+                                   placeholder="Your full name"
+                                   autocomplete="name" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <div class="input-wrap">
+                            <span class="input-icon">👤</span>
+                            <input type="text" id="username" name="username"
+                                   placeholder="Choose a username"
+                                   autocomplete="username" required>
+                        </div>
+                        <span class="field-hint" id="username-hint"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <div class="input-wrap">
+                            <span class="input-icon">📧</span>
+                            <input type="email" id="email" name="email"
+                                   placeholder="your@email.com"
+                                   autocomplete="email" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-wrap">
+                            <span class="input-icon">🔑</span>
+                            <input type="password" id="password" name="password"
+                                   placeholder="Min 6 characters"
+                                   autocomplete="new-password" required>
+                            <button type="button" class="toggle-pw" id="toggle-pw-reg" title="Show/hide password">👁</button>
+                        </div>
+                        <!-- Password strength bar -->
+                        <div class="pw-strength-wrap">
+                            <div class="pw-strength-bar">
+                                <div class="pw-strength-fill" id="pw-strength-fill"></div>
+                            </div>
+                            <span class="pw-strength-label" id="pw-strength-label"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm Password</label>
+                        <div class="input-wrap">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" id="confirm_password" name="confirm_password"
+                                   placeholder="Re-enter your password"
+                                   autocomplete="new-password" required>
+                            <button type="button" class="toggle-pw" id="toggle-pw-confirm" title="Show/hide password">👁</button>
+                        </div>
+                        <span class="field-hint" id="pw-match-hint"></span>
+                    </div>
+
+                    <button type="submit" class="btn-auth" id="register-btn">
+                        <span id="register-btn-text">Create Account</span>
+                        <span id="register-btn-loader" class="btn-loader-dots" style="display:none;">
+                            <span></span><span></span><span></span>
+                        </span>
+                    </button>
+                </form>
+
+                <p class="auth-switch">
+                    Already have an account?
+                    <a href="/login">Sign in →</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+</body>
+
+</html>
