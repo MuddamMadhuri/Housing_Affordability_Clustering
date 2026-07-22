@@ -60,3 +60,6 @@ users.json
 
 # Vercel
 .vercel
+
+# Local environment variables (contains secrets — never commit)
+.env

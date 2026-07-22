@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: housing-affordability-dashboard
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --workers 2 --timeout 120
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SUPABASE_URL
+        sync: false          # paste your value in Render dashboard
+      - key: SUPABASE_SERVICE_KEY
+        sync: false          # paste your service_role key in Render dashboard
+      - key: PYTHON_VERSION
+        value: 3.9.0
