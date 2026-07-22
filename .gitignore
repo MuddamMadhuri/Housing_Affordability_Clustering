@@ -57,3 +57,6 @@ fix_report*.md
 
 # Auth user store (contains hashed passwords — do NOT commit)
 users.json
+
+# Vercel
+.vercel

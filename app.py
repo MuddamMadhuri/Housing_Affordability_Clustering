@@ -14,7 +14,7 @@ app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.permanent_session_lifetime = timedelta(days=7)
 
 # ---- User Store (JSON file, no DB needed) ----
-USERS_FILE = os.path.join(os.path.dirname(__file__), 'users.json')
+USERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'users.json')
 
 def _load_users():
     if not os.path.exists(USERS_FILE):
@@ -72,10 +72,12 @@ def _to_python(obj):
     return obj
 
 # Load Data and Models
-DATA_PATH = "refined_metadata.csv"
-ASSIGNMENTS_PATH = "cluster_assignments.csv"
-MODEL_PATH = "kmeans_model.pkl"
-SCALER_PATH = "scaler.pkl"
+# ---- Paths (relative to this file, works on Vercel) ----
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH        = os.path.join(BASE_DIR, "refined_metadata.csv")
+ASSIGNMENTS_PATH = os.path.join(BASE_DIR, "cluster_assignments.csv")
+MODEL_PATH       = os.path.join(BASE_DIR, "kmeans_model.pkl")
+SCALER_PATH      = os.path.join(BASE_DIR, "scaler.pkl")
 
 # Global variables to hold data
 df = None
