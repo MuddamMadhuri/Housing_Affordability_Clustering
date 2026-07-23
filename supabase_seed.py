@@ -15,8 +15,12 @@ What it does:
   • Seeds the default admin user                      → users table
 """
 
-import os, sys, hashlib, io
+import os, sys, hashlib, io, time
 import pandas as pd
+
+# ── Fix SSL on Windows Python 3.8 (self-signed cert chain issue) ──────────
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context  # noqa
 
 # ── credentials ──────────────────────────────────────────────
 try:
@@ -88,11 +92,27 @@ if os.path.exists(DATA_PATH):
         }
         for _, r in sample.iterrows()
     ]
-    # Clear old rows then batch-insert
-    sb.table("scatter_data").delete().gt("id", 0).execute()
-    for i in range(0, len(scatter), 500):
-        sb.table("scatter_data").insert(scatter[i:i+500]).execute()
-    print(f"✅  {len(scatter)} scatter rows uploaded.\n")
+    # Clear old rows then batch-insert with small batches + retry
+    try:
+        sb.table("scatter_data").delete().gt("id", 0).execute()
+    except Exception as e:
+        print(f"   ⚠️  Could not clear old rows: {e}")
+
+    BATCH = 50
+    uploaded = 0
+    for i in range(0, len(scatter), BATCH):
+        chunk = scatter[i:i+BATCH]
+        for attempt in range(3):
+            try:
+                sb.table("scatter_data").insert(chunk).execute()
+                uploaded += len(chunk)
+                print(f"   … {uploaded}/{len(scatter)} rows", end="\r")
+                time.sleep(0.3)   # avoid HTTP/2 stream resets
+                break
+            except Exception as e:
+                print(f"\n   ⚠️  Attempt {attempt+1} failed: {e}")
+                time.sleep(2 ** attempt)
+    print(f"\n✅  {uploaded} scatter rows uploaded.\n")
 
 # ── 3. model files → Supabase Storage ───────────────────────
 print("🤖  Uploading model files to Supabase Storage (bucket: models) …")
