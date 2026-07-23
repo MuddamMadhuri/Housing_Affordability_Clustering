@@ -40,6 +40,10 @@ refined_metadata.csv
 refined_features.csv
 clustering_features.csv
 
+# Medium data files not needed in production (Supabase serves this data)
+cluster_assignments.csv
+cluster_summary.csv
+
 # Models (if you want to exclude them, though .pkl is usually okay if small)
 # kmeans_model.pkl is ~500KB, so it's safe to keep.
 # *.pkl
