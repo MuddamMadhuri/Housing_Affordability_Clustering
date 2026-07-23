@@ -80,12 +80,12 @@ async function fetchData() {
 
         dashboardData = data;
 
-        renderMetrics(data);
+        try { renderMetrics(data); } catch (e) { console.error("renderMetrics error:", e); }
 
         if (typeof Plotly !== 'undefined') {
-            renderScatter(data.scatter);
-            renderBar(data.stats);
-            renderDistribution(data.stats);
+            try { renderScatter(data.scatter); } catch (e) { console.error("renderScatter error:", e); }
+            try { renderBar(data.stats); } catch (e) { console.error("renderBar error:", e); }
+            try { renderDistribution(data.stats); } catch (e) { console.error("renderDistribution error:", e); }
         } else {
             ['scatter-plot','bar-plot','distribution-plot'].forEach(id => {
                 const el = document.getElementById(id);
@@ -95,7 +95,7 @@ async function fetchData() {
 
     } catch (err) {
         console.error("fetchData error:", err);
-        setMetricError();
+        setMetricError(err);
     } finally {
         setMetricLoading(false);
     }
@@ -109,8 +109,9 @@ function setMetricLoading(loading) {
     });
 }
 
-function setMetricError() {
-    const retry = `<span style="color:#ef4444;font-size:0.85rem">Failed <button onclick="fetchData()" style="background:none;border:1px solid #ef4444;color:#ef4444;cursor:pointer;padding:2px 6px;border-radius:4px;margin-left:4px">Retry</button></span>`;
+function setMetricError(err) {
+    const errMsg = err ? err.message : "Unknown error";
+    const retry = `<span style="color:#ef4444;font-size:0.85rem">Failed <button onclick="fetchData()" style="background:none;border:1px solid #ef4444;color:#ef4444;cursor:pointer;padding:2px 6px;border-radius:4px;margin-left:4px">Retry</button></span><div style="font-size:0.7rem; color:red; margin-top:5px;">${errMsg}</div>`;
     ['total-count','avg-burden','vulnerable-pct','cluster-count'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = retry;
