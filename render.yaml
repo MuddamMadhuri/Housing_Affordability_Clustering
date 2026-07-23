@@ -14,4 +14,4 @@ services:
       - key: SUPABASE_SERVICE_KEY
         sync: false          # paste your service_role key in Render dashboard
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.11.9

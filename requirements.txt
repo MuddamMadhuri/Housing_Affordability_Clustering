@@ -1,3 +1,4 @@
+setuptools>=68.0.0
 Flask==3.0.3
 Werkzeug==3.0.6
 pandas==2.0.3
